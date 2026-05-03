@@ -1,0 +1,168 @@
+#effect-wardrobe-floating-button {
+  position: fixed;
+  right: 18px;
+  bottom: 78px;
+  z-index: 1049;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: #31c48d;
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+
+.effect-wardrobe-page {
+  position: fixed;
+  z-index: 5000;
+  overflow: auto;
+  pointer-events: none;
+  max-height: calc(100vh - 130px);
+}
+
+.effect-wardrobe-card {
+  width: 100%;
+  overflow: hidden;
+  background: #303a49;
+  border-radius: 6px;
+  pointer-events: auto;
+}
+
+.effect-wardrobe-header {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 12px;
+  background: #475465;
+  color: #fff;
+  font-weight: 700;
+}
+
+#effect-wardrobe-close-page {
+  border: 0;
+  border-radius: 4px;
+  background: #5b6675;
+  color: #fff;
+  font-weight: 700;
+}
+
+.effect-wardrobe-body {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.effect-wardrobe-crystal,
+.effect-wardrobe-selected,
+.effect-wardrobe-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px;
+  background: #252f3d;
+  border: 1px solid #6f7f93;
+  border-radius: 6px;
+  color: #fff;
+}
+
+.effect-wardrobe-crystal img {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.effect-wardrobe-title {
+  color: #fff;
+  font-weight: 700;
+}
+
+.effect-wardrobe-muted {
+  color: #aeb8c5;
+  font-size: 12px;
+}
+
+#effect-wardrobe-sacrifice,
+#effect-wardrobe-list {
+  display: grid;
+  gap: 8px;
+}
+
+.effect-wardrobe-action {
+  position: relative;
+  z-index: 5001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 64px;
+  padding: 18px 16px;
+  border-radius: 6px;
+  background: #31c48d;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  pointer-events: auto;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.effect-wardrobe-action:hover {
+  background: #26a979;
+}
+
+.effect-wardrobe-action-disabled,
+.effect-wardrobe-action-disabled:hover {
+  background: #667485;
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.effect-wardrobe-row {
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.effect-wardrobe-effects {
+  margin-top: 4px;
+  color: #31c48d;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+#effect-wardrobe-confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 7000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.effect-wardrobe-confirm-card {
+  width: min(460px, calc(100vw - 24px));
+  overflow: hidden;
+  background: #303a49;
+  border-radius: 6px;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.5);
+}
+
+.effect-wardrobe-confirm-body {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  color: #fff;
+}
+
+.effect-wardrobe-confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.effect-wardrobe-confirm-actions .btn {
+  min-height: 38px;
+}
