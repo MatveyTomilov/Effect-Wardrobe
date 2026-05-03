@@ -13,9 +13,9 @@ let observer;
 let renderQueued = false;
 let sacrificeInProgress = false;
 
-export function setup(ctx) {
+export async function setup(ctx) {
   ctxRef = ctx;
-  registerCharmData();
+  await registerCharmData(ctx);
 
   ctx.patch(Player, "addEquippedItemModifiers").after(function () {
     addCharmModifiers(this);
@@ -47,10 +47,8 @@ export function setup(ctx) {
   });
 }
 
-function registerCharmData() {
-  if (game.equipmentSlots.getObjectByID?.(CHARM_SLOT_ID) !== undefined) return;
-
-  game.registerDataPackage({
+async function registerCharmData(ctx) {
+  await ctx.gameData.addPackage({
     namespace: MOD_NAMESPACE,
     data: {
       equipmentSlots: [

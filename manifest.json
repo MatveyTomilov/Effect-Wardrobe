@@ -1,5 +1,6 @@
 {
   "namespace": "effectWardrobe",
+  "icon": "assets/charm_crystal.svg",
   "setup": "setup.mjs",
   "load": ["enchanter.css"]
 }
