@@ -21,6 +21,10 @@ export function setup(ctx) {
     addCharmModifiers(this);
   });
 
+  ctx.patch(Player, "mergeUninheritedEffectApplicators").after(function () {
+    addCharmCombatEffects(this);
+  });
+
   ctx.patch(Bank, "selectItemOnClick").after(function () {
     queueRender();
   });
@@ -189,6 +193,19 @@ function addCharmModifiers(player) {
   }
 }
 
+function addCharmCombatEffects(player) {
+  if (!isCharmEquipped(player)) return;
+
+  for (const itemID of Object.keys(state.sacrifices)) {
+    const item = game.items.getObjectByID(itemID);
+    if (!item) continue;
+
+    if (Array.isArray(item.combatEffects) && item.combatEffects.length > 0) {
+      player.mergeEffectApplicators(item.combatEffects);
+    }
+  }
+}
+
 function getNextCost() {
   return Math.min(MAX_COST, Math.floor(BASE_COST * COST_MULTIPLIER ** state.totalSacrifices));
 }
@@ -204,8 +221,15 @@ function canSacrifice(item) {
     item.id !== CHARM_ITEM_ID &&
     state.sacrifices[item.id] === undefined &&
     game.bank.getQty(item) > 0 &&
-    Array.isArray(item.modifiers) &&
-    item.modifiers.length > 0
+    hasTransferableBonus(item)
+  );
+}
+
+function hasTransferableBonus(item) {
+  return (
+    (Array.isArray(item.modifiers) && item.modifiers.length > 0) ||
+    (Array.isArray(item.combatEffects) && item.combatEffects.length > 0) ||
+    (Array.isArray(item.conditionalModifiers) && item.conditionalModifiers.length > 0)
   );
 }
 
@@ -410,18 +434,28 @@ function renderEnchanterUI() {
 }
 
 function getItemEffectDescriptions(item, count) {
-  if (!item || !Array.isArray(item.modifiers) || item.modifiers.length === 0) {
+  if (!item || !hasTransferableBonus(item)) {
     return ["\u041d\u0435\u0442 passive/modifier \u0431\u043e\u043d\u0443\u0441\u043e\u0432."];
   }
 
-  return item.modifiers.map((modifier) => {
-    const copy = modifier.clone();
-    copy.value *= count;
-    const description = copy.getDescription?.();
-    if (description?.text !== undefined) return description.text;
-    if (Array.isArray(description) && description[0]?.text !== undefined) return description[0].text;
-    return `${copy.modifier?.localID ?? copy.modifier?.id ?? "\u0411\u043e\u043d\u0443\u0441"}: ${copy.value}`;
-  });
+  const descriptions = [];
+  if (Array.isArray(item.modifiers)) {
+    for (const modifier of item.modifiers) {
+      const copy = modifier.clone();
+      copy.value *= count;
+      const description = copy.getDescription?.();
+      if (description?.text !== undefined) descriptions.push(description.text);
+      else if (Array.isArray(description) && description[0]?.text !== undefined) descriptions.push(description[0].text);
+      else descriptions.push(`${copy.modifier?.localID ?? copy.modifier?.id ?? "\u0411\u043e\u043d\u0443\u0441"}: ${copy.value}`);
+    }
+  }
+  if (Array.isArray(item.combatEffects) && item.combatEffects.length > 0) {
+    descriptions.push(item.modifiedDescription || item.description || "\u0411\u043e\u0435\u0432\u043e\u0439 passive-\u044d\u0444\u0444\u0435\u043a\u0442.");
+  }
+  if (Array.isArray(item.conditionalModifiers) && item.conditionalModifiers.length > 0) {
+    descriptions.push(item.modifiedDescription || item.description || "\u0423\u0441\u043b\u043e\u0432\u043d\u044b\u0439 passive-\u0431\u043e\u043d\u0443\u0441.");
+  }
+  return descriptions;
 }
 
 function getSelectedItemText(item, valid) {
