@@ -6,6 +6,18 @@ const BACKUP_KEY_PREFIX = "effectWardrobe.enchanterState";
 const BASE_COST = 1000;
 const COST_MULTIPLIER = 1.5;
 const MAX_COST = 100000000;
+const ACCESS_UNLOCK_PATTERNS = [
+  /открыва(?:ет|ют)\s+доступ/i,
+  /доступ\s+к/i,
+  /unlocks?\s+access/i,
+  /opens?\s+access/i,
+  /allows?\s+access/i,
+  /grants?\s+access/i,
+  /access\s+to/i,
+  /area.?access/i,
+  /dungeon.?access/i,
+  /slayer.?area/i,
+];
 
 let ctxRef;
 let state = defaultState();
@@ -179,7 +191,7 @@ function addCharmModifiers(player) {
 
   for (const [itemID, count] of Object.entries(state.sacrifices)) {
     const item = game.items.getObjectByID(itemID);
-    if (!item || !Array.isArray(item.modifiers) || item.modifiers.length === 0) continue;
+    if (!item || isAccessUnlockItem(item) || !Array.isArray(item.modifiers) || item.modifiers.length === 0) continue;
 
     const source = { name: `Чарм-кристалл: ${item.name} x${count}` };
     const modifiers = item.modifiers.map((modifier) => {
@@ -196,7 +208,7 @@ function addCharmCombatEffects(player) {
 
   for (const itemID of Object.keys(state.sacrifices)) {
     const item = game.items.getObjectByID(itemID);
-    if (!item) continue;
+    if (!item || isAccessUnlockItem(item)) continue;
 
     if (Array.isArray(item.combatEffects) && item.combatEffects.length > 0) {
       player.mergeEffectApplicators(item.combatEffects);
@@ -219,7 +231,8 @@ function canSacrifice(item) {
     item.id !== CHARM_ITEM_ID &&
     state.sacrifices[item.id] === undefined &&
     game.bank.getQty(item) > 0 &&
-    hasTransferableBonus(item)
+    hasTransferableBonus(item) &&
+    !isAccessUnlockItem(item)
   );
 }
 
@@ -229,6 +242,45 @@ function hasTransferableBonus(item) {
     (Array.isArray(item.combatEffects) && item.combatEffects.length > 0) ||
     (Array.isArray(item.conditionalModifiers) && item.conditionalModifiers.length > 0)
   );
+}
+
+function isAccessUnlockItem(item) {
+  const text = getAccessSearchText(item);
+  return ACCESS_UNLOCK_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+function getAccessSearchText(item) {
+  const parts = [];
+  collectAccessStrings(item?.name, parts);
+  collectAccessStrings(item?.description, parts);
+  collectAccessStrings(item?.modifiedDescription, parts);
+  collectAccessStrings(item?.customDescription, parts);
+  collectAccessStrings(item?.modifiers, parts);
+  collectAccessStrings(item?.combatEffects, parts);
+  collectAccessStrings(item?.conditionalModifiers, parts);
+  return parts.join(" ").replace(/<[^>]+>/g, " ");
+}
+
+function collectAccessStrings(value, parts, depth = 0) {
+  if (value === undefined || value === null || depth > 4) return;
+  if (typeof value === "string") {
+    parts.push(value);
+    return;
+  }
+  if (typeof value === "number" || typeof value === "boolean") return;
+  if (Array.isArray(value)) {
+    for (const entry of value) collectAccessStrings(entry, parts, depth + 1);
+    return;
+  }
+  if (typeof value !== "object") return;
+
+  for (const key of ["id", "localID", "name", "description", "customDescription"]) {
+    if (typeof value[key] === "string") parts.push(value[key]);
+  }
+
+  const description = value.getDescription?.();
+  collectAccessStrings(description, parts, depth + 1);
+  collectAccessStrings(value.modifier, parts, depth + 1);
 }
 
 function requestSacrificeSelectedItem() {
@@ -462,6 +514,9 @@ function getSelectedItemText(item, valid) {
   }
   if (state.sacrifices[item.id] !== undefined) {
     return `\u042d\u0442\u043e\u0442 \u043f\u0440\u0435\u0434\u043c\u0435\u0442 \u0443\u0436\u0435 \u043f\u0440\u0438\u043d\u0435\u0441\u0435\u043d \u0432 \u0436\u0435\u0440\u0442\u0432\u0443: ${item.name}`;
+  }
+  if (isAccessUnlockItem(item)) {
+    return "\u041d\u0435\u043b\u044c\u0437\u044f \u0436\u0435\u0440\u0442\u0432\u043e\u0432\u0430\u0442\u044c \u043f\u0440\u0435\u0434\u043c\u0435\u0442\u044b, \u043a\u043e\u0442\u043e\u0440\u044b\u0435 \u043e\u0442\u043a\u0440\u044b\u0432\u0430\u044e\u0442 \u0434\u043e\u0441\u0442\u0443\u043f \u043a \u0437\u043e\u043d\u0430\u043c \u0438\u043b\u0438 \u043a\u043e\u043d\u0442\u0435\u043d\u0442\u0443.";
   }
   if (!valid) {
     return "\u0412\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0439 \u043f\u0440\u0435\u0434\u043c\u0435\u0442 \u043d\u0435\u043b\u044c\u0437\u044f \u043f\u0440\u0438\u043d\u0435\u0441\u0442\u0438 \u0432 \u0436\u0435\u0440\u0442\u0432\u0443.";
