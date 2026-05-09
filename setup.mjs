@@ -12,6 +12,7 @@ let state = defaultState();
 let observer;
 let renderQueued = false;
 let sacrificeInProgress = false;
+let originalEquipmentCheckForItem;
 
 export async function setup(ctx) {
   ctxRef = ctx;
@@ -40,6 +41,7 @@ export async function setup(ctx) {
   ctx.onInterfaceReady(() => {
     giveCharmCrystalIfMissing();
     updateCharmDescription();
+    patchEquipmentItemChecks();
     buildEnchanterUI();
     startObserver();
     queueRender();
@@ -174,6 +176,25 @@ function isCharmEquipped(player) {
   return player.equipment.checkForItem(charm);
 }
 
+function patchEquipmentItemChecks() {
+  const playerEquipment = game?.combat?.player?.equipment;
+  const prototype = playerEquipment?.constructor?.prototype;
+  if (!prototype || originalEquipmentCheckForItem !== undefined) return;
+
+  originalEquipmentCheckForItem = prototype.checkForItem;
+  if (typeof originalEquipmentCheckForItem !== "function") return;
+
+  prototype.checkForItem = function (item, ...args) {
+    if (originalEquipmentCheckForItem.call(this, item, ...args)) return true;
+    if (this !== game?.combat?.player?.equipment) return false;
+    if (item === undefined || item?.id === CHARM_ITEM_ID) return false;
+
+    const charm = getCharmCrystal();
+    const charmEquipped = charm !== undefined && originalEquipmentCheckForItem.call(this, charm);
+    return charmEquipped && state.sacrifices[item.id] !== undefined;
+  };
+}
+
 function addCharmModifiers(player) {
   if (!isCharmEquipped(player)) return;
 
@@ -227,8 +248,14 @@ function hasTransferableBonus(item) {
   return (
     (Array.isArray(item.modifiers) && item.modifiers.length > 0) ||
     (Array.isArray(item.combatEffects) && item.combatEffects.length > 0) ||
-    (Array.isArray(item.conditionalModifiers) && item.conditionalModifiers.length > 0)
+    (Array.isArray(item.conditionalModifiers) && item.conditionalModifiers.length > 0) ||
+    hasPassiveDescription(item)
   );
+}
+
+function hasPassiveDescription(item) {
+  const text = [item?.customDescription, item?.modifiedDescription, item?.description].filter(Boolean).join(" ");
+  return /пассивн|passive|открыва(?:ет|ют)\s+доступ|unlocks?\s+access|access\s+to/i.test(text);
 }
 
 function requestSacrificeSelectedItem() {
@@ -437,6 +464,7 @@ function getItemEffectDescriptions(item, count) {
   }
 
   const descriptions = [];
+  const passiveText = item.customDescription || item.modifiedDescription || item.description;
   if (Array.isArray(item.modifiers)) {
     for (const modifier of item.modifiers) {
       const copy = modifier.clone();
@@ -448,10 +476,13 @@ function getItemEffectDescriptions(item, count) {
     }
   }
   if (Array.isArray(item.combatEffects) && item.combatEffects.length > 0) {
-    descriptions.push(item.modifiedDescription || item.description || "\u0411\u043e\u0435\u0432\u043e\u0439 passive-\u044d\u0444\u0444\u0435\u043a\u0442.");
+    descriptions.push(passiveText || "\u0411\u043e\u0435\u0432\u043e\u0439 passive-\u044d\u0444\u0444\u0435\u043a\u0442.");
   }
   if (Array.isArray(item.conditionalModifiers) && item.conditionalModifiers.length > 0) {
-    descriptions.push(item.modifiedDescription || item.description || "\u0423\u0441\u043b\u043e\u0432\u043d\u044b\u0439 passive-\u0431\u043e\u043d\u0443\u0441.");
+    descriptions.push(passiveText || "\u0423\u0441\u043b\u043e\u0432\u043d\u044b\u0439 passive-\u0431\u043e\u043d\u0443\u0441.");
+  }
+  if (descriptions.length === 0 && passiveText) {
+    descriptions.push(passiveText);
   }
   return descriptions;
 }
