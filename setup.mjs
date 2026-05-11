@@ -13,6 +13,7 @@ let observer;
 let renderQueued = false;
 let sacrificeInProgress = false;
 let originalEquipmentCheckForItem;
+let baseCharmSpecialAttacks;
 
 export async function setup(ctx) {
   ctxRef = ctx;
@@ -160,6 +161,22 @@ function updateCharmDescription() {
   if (!charm) return;
   charm._customDescription = "\u0421\u043e\u0431\u0438\u0440\u0430\u0435\u0442 \u0438 \u0445\u0440\u0430\u043d\u0438\u0442 passive/modifier \u0431\u043e\u043d\u0443\u0441\u044b \u043f\u0440\u0438\u043d\u0435\u0441\u0435\u043d\u043d\u044b\u0445 \u0432 \u0436\u0435\u0440\u0442\u0432\u0443 \u043f\u0440\u0435\u0434\u043c\u0435\u0442\u043e\u0432.";
   charm._modifiedDescription = undefined;
+  syncCharmSpecialAttacks();
+}
+
+function syncCharmSpecialAttacks() {
+  const charm = getCharmCrystal();
+  if (!charm) return;
+  if (baseCharmSpecialAttacks === undefined) {
+    baseCharmSpecialAttacks = Array.isArray(charm.specialAttacks) ? [...charm.specialAttacks] : [];
+  }
+
+  const specialAttacks = [...baseCharmSpecialAttacks];
+  for (const itemID of Object.keys(state.sacrifices)) {
+    const item = game.items.getObjectByID(itemID);
+    if (Array.isArray(item?.specialAttacks)) specialAttacks.push(...item.specialAttacks);
+  }
+  charm.specialAttacks = specialAttacks;
 }
 
 function giveCharmCrystalIfMissing() {
@@ -249,6 +266,7 @@ function hasTransferableBonus(item) {
     (Array.isArray(item.modifiers) && item.modifiers.length > 0) ||
     (Array.isArray(item.combatEffects) && item.combatEffects.length > 0) ||
     (Array.isArray(item.conditionalModifiers) && item.conditionalModifiers.length > 0) ||
+    (Array.isArray(item.specialAttacks) && item.specialAttacks.length > 0) ||
     hasPassiveDescription(item)
   );
 }
@@ -292,6 +310,7 @@ function sacrificeSelectedItem(item, cost) {
   state.totalSacrifices += 1;
   saveState();
   updateCharmDescription();
+  syncCharmSpecialAttacks();
   game.bank.renderQueue.bankSearch = true;
   game.bank.renderQueue.items.add(item);
   game.bank.render();
@@ -480,6 +499,13 @@ function getItemEffectDescriptions(item, count) {
   }
   if (Array.isArray(item.conditionalModifiers) && item.conditionalModifiers.length > 0) {
     descriptions.push(passiveText || "\u0423\u0441\u043b\u043e\u0432\u043d\u044b\u0439 passive-\u0431\u043e\u043d\u0443\u0441.");
+  }
+  if (Array.isArray(item.specialAttacks) && item.specialAttacks.length > 0) {
+    for (const specialAttack of item.specialAttacks) {
+      const name = specialAttack?.attack?.name ?? specialAttack?.name ?? specialAttack?.id ?? "\u041e\u0441\u043e\u0431\u0430\u044f \u0430\u0442\u0430\u043a\u0430";
+      const chance = specialAttack?.chance ?? specialAttack?.defaultChance;
+      descriptions.push(chance !== undefined ? `\u041e\u0441\u043e\u0431\u0430\u044f \u0430\u0442\u0430\u043a\u0430: ${name} (${chance}%)` : `\u041e\u0441\u043e\u0431\u0430\u044f \u0430\u0442\u0430\u043a\u0430: ${name}`);
+    }
   }
   if (descriptions.length === 0 && passiveText) {
     descriptions.push(passiveText);
